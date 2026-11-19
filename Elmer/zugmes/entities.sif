@@ -1,0 +1,26 @@
+!------ Skeleton for body section -----
+Body 1
+  Name = tensile
+End
+
+!------ Skeleton for boundary section -----
+Boundary Condition 1
+  Name = bnry2
+End
+
+Boundary Condition 2
+  Name = load
+End
+
+Boundary Condition 3
+  Name = xsym
+End
+
+Boundary Condition 4
+  Name = ysym
+End
+
+Boundary Condition 5
+  Name = zsym
+End
+
