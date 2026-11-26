@@ -1,0 +1,8 @@
+! ----- names for bodies -----
+$ tensile = 1
+! ----- names for boundaries -----
+$ bnry2 = 1
+$ load = 2
+$ xsym = 3
+$ ysym = 4
+$ zsym = 5
