@@ -1,0 +1,184 @@
+Header
+  CHECK KEYWORDS Warn
+  Mesh DB "." "calcmesh"
+  Include Path ""
+  Results Directory "results"
+End
+
+Simulation
+  Max Output Level = 5
+  Coordinate System = Cartesian
+  Coordinate Mapping(3) = 1 2 3
+  Simulation Type = Transient
+
+  BDF Order = 2
+  
+  Timestep Sizes  = 0.001
+  Timestep Intervals = 1000
+  Output Intervals = 1
+  Steady State Max Iterations = 1
+post file = case.vtu
+ 
+  Adaptive Timestepping = Logical True 	!Step doubling: one full step vs. two half steps. Each Timestep Sizes step is split into substeps.
+  Adaptive Time Error = Real 0.05
+  ! Adaptive Nonlinear Iterations = 6  ! held the step at 1e-5 near the neck 	!required 	Tolerance: rtol (weighted) or relative norm change (norm).
+  Adaptive Safety Factor = Real 0.9 	!Next step: dt·safety·err^(−1/(p+1)).
+  Adaptive Initial Timestep = Real 0.001
+  Adaptive Max Timestep = Real 0.001 	!Largest substep (at most dt).
+  Adaptive Min Timestep = Real 1e-8 	!Smallest substep; accepted with a warning.
+  Adaptive Increase Coefficient = Real 2.0 !	Max growth factor per step.
+  Adaptive Decrease Coefficient = Real 0.5 !	Max shrink factor per step.
+  Adaptive Keep Smallest = Integer 3 	! Steps after a rejection before growing again.
+  Adaptive Rough Timestep = Logical False !	Last substep may overshoot; true time kept, next step shortened.
+  Adaptive Reject Not Converged = Logical True !	Split a short remainder into two equal substeps.
+
+End
+
+Constants
+  Gravity(4) = 0 -1 0 9.82
+  Stefan Boltzmann = 5.67e-08
+  Permittivity of Vacuum = 8.8542e-12
+  Boltzmann Constant = 1.3807e-23
+  Unit Charge = 1.602e-19
+End
+
+Body 1
+  Target Bodies(1) = 1
+  Name = "Body 1"
+  Equation = 1
+  Material = 1
+End
+
+Solver 1
+  Equation = Nonlinear elasticity
+
+  Variable = -dofs 3 Displacement
+  Calculate Strains = True
+  Procedure = "ElasticSolve" "ElasticSolver"
+
+  Nonlinear System Linesearch = True
+  Time Derivative Order = 1
+  Quasi Stationary = Logical True
+
+  Calculate Principal = True
+  Calculate Stresses = True
+
+  Exec Solver = Always
+
+  Steady State Convergence Tolerance = 1.0e-5
+
+  Nonlinear System Convergence Tolerance = 1.0e-5  ! relative to the reaction forces
+  Nonlinear System Max Iterations = 100
+  Nonlinear System Newton After Iterations = 1
+  Nonlinear System Newton After Tolerance = 1.0e-3
+  Nonlinear System Relaxation Factor = 1
+
+  Optimize Bandwidth = True
+
+  Linear System Solver = Direct
+  Linear System Direct Method = Mumps
+
+  stress: Linear System Use Hypre = Logical False
+  stress: Linear System Preconditioning = ILU0
+  strain: Linear System Use Hypre = Logical False
+  strain: Linear System Iterative Method = BiCGStabL
+  strain: Linear System Preconditioning = ILU0
+  stress: Linear System Iterative Method = BiCGStabL
+
+  Linear System Abort Not Converged = False
+  Linear System Residual Output = 10
+  Linear System Precondition Recompute = 1
+  
+  Output State Variables = Logical True 
+  Calculate Loads = Logical True
+  Large Deflection = Logical True
+
+  ! 2x2x2 points on the 20-node hexahedra: as CalculiX C3D20R
+  Element Integration Points = "-brick 8"
+  output state variables = logical true
+End
+
+Solver 2
+Exec Solver = After Timestep
+Equation = SaveScalars
+Procedure = "SaveData" "SaveScalars"
+Filename = "linforces.dat"
+ Variable 1 = time
+ Variable 2 = Displacement Loads 1
+ Operator 2 = boundary sum
+ Variable 3 = Displacement 1
+ Operator 3 = max
+ Variable 4 = stress_xx
+ operator 4 = boundary mean
+End
+
+Equation 1
+  Name = "Equation 1"
+  Active Solvers(1) = 1
+End
+
+
+Material 1
+
+! fplastic: true stress vs. log TOTAL strain, E = sig1/eps1 = 210000 MPa (mm, MPa)
+! eps_i = plastic strain_i + sig_i/210000 ; plateau kept non-softening (fplastic does not allow softening)
+  Number of Material Constants = Integer 53
+  Number of State Variables = Integer 14
+  ! List material constants as {}:
+Material Constants(53) = Real 0.3 0.00154761904762	325
+0.0053032047619	326.173
+0.00905796666667	327.173
+0.0128127285714	328.173
+0.0165789	331.569
+0.0203563095238	337.325
+0.0241548238095	347.513
+0.027986552381	364.676
+0.0317963047619	377.224
+0.0407839714286	400.254
+0.0497741	423.801
+0.0587381380952	441.869
+0.0676903238095	457.238
+0.0766319761905	470.605
+0.0855658857143	482.346
+0.0944934	492.744
+0.103415614286	502.029
+0.112333761905	510.46
+0.121249404762	518.155
+0.130161285714	525.27
+0.139070704762	531.868
+0.147977957143	538.011
+0.156883390476	543.772
+0.165787304762	549.214
+0.174690638095	554.324
+0.268910091794343 559.175995549989
+UMAT Subroutine = File "UMATLib" "fplastic"
+UMAT Tangent = String "Jaumann"  ! DDSDDE of fplastic follows the Abaqus convention
+!
+End
+
+
+Boundary Condition 1
+  Target Boundaries(1) = 3
+  Name = "symx"
+  Displacement 1 = 0
+      Save Scalars = Logical True
+End
+
+Boundary Condition 2
+  Target Boundaries(1) = 4
+  Name = "symy"
+  Displacement 2 = 0
+End
+
+Boundary Condition 3
+  Target Boundaries(1) = 5
+  Name = "symz"
+  Displacement 3 = 0
+End
+
+Boundary Condition 4
+  Target Boundaries(1) = 2
+  Name = "load"
+  Displacement 1 = Variable "Time"; Real Matc "tx*14.0"
+
+  End
